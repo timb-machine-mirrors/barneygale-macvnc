@@ -22,7 +22,7 @@ def write(sock, data):
     sock.sendall(data)
 
 
-def pack_credentials(data):
+def pack_credential(data):
     data = data.encode('utf-8') + b'\x00'
     if len(data) < 64:
         data += urandom(64 - len(data))
@@ -63,8 +63,9 @@ def connect(host, port, username, password, public_key=None):
                 b'\x01\x00'          # packet version
                 b'RSA1'              # host key algorithm
                 b'\x00\x01' +        # has credentials? (yes)
-                aes_enc(pack_credentials(username) + pack_credentials(password)) +
-                b'\x00\x01' +        # has aes key? (yes)
+                aes_enc(pack_credential(username) + 
+                        pack_credential(password)) +
+                b'\x00\x01' +        # has AES key? (yes)
                 pub_enc(aes_key))
     read(sock, 4)  # unknown (all zeroes)
     # ---- end Apple VNC auth ----
