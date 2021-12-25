@@ -53,9 +53,9 @@ def connect(host, port, username, password, public_key=None):
     aes_enc = Cipher(algorithms.AES(aes_key), modes.ECB()).encryptor().update
     pub_enc = partial(public_key.encrypt, padding=padding.PKCS1v15())
 
-    write(sock, b'\x00\x00\x01\x8a\x01\x00RSA1'
-               b'\x00\x01' + aes_enc(pack_credentials(username) + pack_credentials(password)) +
-               b'\x00\x01' + pub_enc(aes_key))
+    write(sock, b'\x00\x00\x01\x8a\x01\x00RSA1' +
+                b'\x00\x01' + aes_enc(pack_credentials(username) + pack_credentials(password)) +
+                b'\x00\x01' + pub_enc(aes_key))
     read(sock, 4)
     # ---- end Apple VNC auth ----
 
