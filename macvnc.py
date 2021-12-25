@@ -1,4 +1,3 @@
-from functools import partial
 from os import urandom
 from socket import create_connection
 
@@ -44,7 +43,7 @@ def connect(host, port, username, password, public_key=None):
 
     # ---- begin Apple VNC auth ----
     if public_key is None:
-        write(sock, b'\x00\x00\x00\x0a'  # packet length
+        write(sock, b'\x00\x00\x00\x0a'  # packet length (10 bytes)
                     b'\x01\x00'          # packet version
                     b'RSA1'              # host key algorithm
                     b'\x00\x00'          # has credentials? (no)
@@ -56,17 +55,17 @@ def connect(host, port, username, password, public_key=None):
         read(sock, 1)  # unknown (zero)
 
     aes_key = urandom(16)
-    aes_enc = Cipher(algorithms.AES(aes_key), modes.ECB()).encryptor().update
-    pub_enc = partial(public_key.encrypt, padding=padding.PKCS1v15())
+    encryptor = Cipher(algorithms.AES(aes_key), modes.ECB()).encryptor()
 
-    write(sock, b'\x00\x00\x01\x8a'  # packet length
+    write(sock, b'\x00\x00\x01\x8a'  # packet length (394 bytes)
                 b'\x01\x00'          # packet version
                 b'RSA1'              # host key algorithm
                 b'\x00\x01' +        # has credentials? (yes)
-                aes_enc(pack_credential(username) + 
-                        pack_credential(password)) +
+                encryptor.update(
+                    pack_credential(username) +
+                    pack_credential(password)) +
                 b'\x00\x01' +        # has AES key? (yes)
-                pub_enc(aes_key))
+                public_key.encrypt(aes_key, padding=padding.PKCS1v15()))
     read(sock, 4)  # unknown (all zeroes)
     # ---- end Apple VNC auth ----
 
