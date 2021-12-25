@@ -44,19 +44,29 @@ def connect(host, port, username, password, public_key=None):
 
     # ---- begin Apple VNC auth ----
     if public_key is None:
-        write(sock, b'\x00\x00\x00\x0a\x01\x00RSA1\x00\x00\x00\x00')
-        read(sock, 6)
-        public_key = load_der_public_key(read(sock, read_int(sock, 4)))
-        read(sock, 1)
+        write(sock, b'\x00\x00\x00\x0a'  # packet length
+                    b'\x01\x00'          # packet version
+                    b'RSA1'              # host key algorithm
+                    b'\x00\x00'          # has credentials? (no)
+                    b'\x00\x00')         # has AES key? (no)
+        read(sock, 4)  # packet length
+        read(sock, 2)  # packet version
+        public_key_length = read_int(sock, 4)
+        public_key = load_der_public_key(read(sock, public_key_length))
+        read(sock, 1)  # unknown (zero)
 
     aes_key = urandom(16)
     aes_enc = Cipher(algorithms.AES(aes_key), modes.ECB()).encryptor().update
     pub_enc = partial(public_key.encrypt, padding=padding.PKCS1v15())
 
-    write(sock, b'\x00\x00\x01\x8a\x01\x00RSA1' +
-                b'\x00\x01' + aes_enc(pack_credentials(username) + pack_credentials(password)) +
-                b'\x00\x01' + pub_enc(aes_key))
-    read(sock, 4)
+    write(sock, b'\x00\x00\x01\x8a'  # packet length
+                b'\x01\x00'          # packet version
+                b'RSA1'              # host key algorithm
+                b'\x00\x01' +        # has credentials? (yes)
+                aes_enc(pack_credentials(username) + pack_credentials(password)) +
+                b'\x00\x01' +        # has aes key? (yes)
+                pub_enc(aes_key))
+    read(sock, 4)  # unknown (all zeroes)
     # ---- end Apple VNC auth ----
 
     # Standard VNC auth response
